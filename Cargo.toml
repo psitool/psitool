@@ -1,0 +1,15 @@
+[package]
+name = "psitool"
+version = "0.1.0"
+edition = "2024"
+authors = ["psitool <psitool@protonmail.com>"]
+license = "GPL-3.0-or-later"
+readme = "README.md"
+keywords = ["remoteviewing", "psi", "clairvoyance", "remoteview", "rv", "parapsychology"]
+exclude = ["target/*", ".github/*"]
+
+[dependencies]
+
+[[bin]]
+name = "psi-target-pool"
+path = "src/bin/psi_target_pool.rs"
