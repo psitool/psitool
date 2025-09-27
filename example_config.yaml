@@ -1,0 +1,14 @@
+target_pools:
+  training:
+    path: ~/Documents/rv_pools/train
+    labels: [train, wm, online]
+    wiki:
+      default_limit: 100
+      queries:
+        - query: animal
+        - query: building
+          limit: 1000
+        - query: landscape
+  personal:
+    path: ~/Documents/rv_pools/personal_pool
+    labels: [train, personal]

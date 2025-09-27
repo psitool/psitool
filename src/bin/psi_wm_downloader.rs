@@ -1,4 +1,6 @@
-use log::{debug, info};
+#![allow(dead_code)]
+use clap::Parser;
+use log::{debug, info, warn};
 use once_cell::sync::Lazy;
 use regex::Regex;
 use serde::Deserialize;
@@ -8,7 +10,29 @@ use std::fs;
 use std::io::Write;
 use std::path::Path;
 
+use psitool::config::Config;
 use psitool::logger;
+
+#[derive(Parser, Debug)]
+#[command(author, version, about)]
+struct Args {
+    #[arg(short, long, help = "verbose logging (debug logs)")]
+    verbose: bool,
+
+    #[arg(
+        short,
+        long,
+        default_value = "~/.psitool.yaml",
+        help = "the config with the target pools"
+    )]
+    config: String,
+
+    #[arg(short, long, help = "override wiki default_limit")]
+    limit: Option<usize>,
+
+    #[arg(help = "the target pool to download for")]
+    pool: String,
+}
 
 static RE_CC_BY: Lazy<Regex> = Lazy::new(|| Regex::new(r"^CC BY(\s+\d+(\.\d+)?)?$").unwrap());
 
@@ -189,12 +213,25 @@ fn download_and_save(page: &Page, out_dir: &str) -> anyhow::Result<Option<(Strin
 }
 
 fn main() -> anyhow::Result<()> {
-    logger::init(true);
+    let args = Args::parse();
+    logger::init(args.verbose);
+    let cfg = Config::load(&args.config)?;
+    info!("pool chosen was: {}", args.pool);
+    if !cfg.has_pool(&args.pool) {
+        warn!(
+            "cant find pool '{}' of pools: {:?}",
+            args.pool,
+            cfg.list_pools()
+        );
+        anyhow::bail!("pool '{}' not found!'", args.pool);
+    }
+    /*
     let results = search_images("cat", 3)?;
     for page in results {
         if let Some((img, meta)) = download_and_save(&page, "downloads")? {
             info!("Saved img {} and metadata {}", img, meta);
         }
     }
+    */
     Ok(())
 }
