@@ -58,11 +58,11 @@ struct ExtValue {
 
 #[derive(Debug, serde::Serialize)]
 struct YamlData {
-    image_description: String,
-    datetime_original: String,
-    img_metadata: HashMap<String, String>,
+    image_description: serde_json::Value,
+    datetime_original: serde_json::Value,
+    img_metadata: HashMap<String, serde_json::Value>,
     license: String,
-    license_meta: HashMap<String, String>,
+    license_meta: HashMap<String, serde_json::Value>,
 }
 
 fn make_client() -> anyhow::Result<reqwest::blocking::Client> {
@@ -159,18 +159,23 @@ fn download_and_save(page: &Page, out_dir: &str) -> anyhow::Result<Option<(Strin
             | "LicenseUrl"
             | "LicenseShortName"
             | "UsageTerms"
-            | "AttributionRequired" => {
-                license_meta.insert(k.clone(), v.value.to_string());
+            | "AttributionRequired"
+            | "Artist"
+            | "Permission"
+            | "Restrictions"
+            | "Copyrighted"
+            | "Credit" => {
+                license_meta.insert(k.clone(), v.value.clone());
             }
             _ => {
-                img_metadata.insert(k.clone(), v.value.to_string());
+                img_metadata.insert(k.clone(), v.value.clone());
             }
         }
     }
 
     let yaml_data = YamlData {
-        image_description: image_description.to_string(),
-        datetime_original: datetime_original.to_string(),
+        image_description: image_description.clone(),
+        datetime_original: datetime_original.clone(),
         img_metadata,
         license: license_short,
         license_meta,
