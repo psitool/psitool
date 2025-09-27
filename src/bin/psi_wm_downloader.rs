@@ -1,4 +1,3 @@
-#![allow(dead_code)]
 use clap::Parser;
 use log::{debug, info, warn};
 use once_cell::sync::Lazy;
@@ -225,13 +224,19 @@ fn main() -> anyhow::Result<()> {
         );
         anyhow::bail!("pool '{}' not found!'", args.pool);
     }
-    /*
-    let results = search_images("cat", 3)?;
-    for page in results {
-        if let Some((img, meta)) = download_and_save(&page, "downloads")? {
-            info!("Saved img {} and metadata {}", img, meta);
+    let tpool = cfg.get_pool(&args.pool).unwrap();
+    for (query, limit) in tpool.iter_queries(args.limit) {
+        info!("query {} and limit {}", query, limit);
+        let dest_dir_buf = tpool.dest_dir()?;
+        let dest_dir = dest_dir_buf.to_str().unwrap();
+        let results = search_images(query, limit)?;
+        for page in results {
+            if let Some((img, meta)) = download_and_save(&page, dest_dir)? {
+                info!("Saved img {} and metadata {}", img, meta);
+            } else {
+                warn!("didnt get anything with Page {}", page);
+            }
         }
     }
-    */
     Ok(())
 }

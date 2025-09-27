@@ -1,5 +1,4 @@
-#![allow(dead_code)]
-use log::error;
+use log::{error, info};
 use serde::Deserialize;
 use std::collections::HashMap;
 use std::path::PathBuf;
@@ -11,16 +10,15 @@ pub struct Config {
 
 #[derive(Debug, Deserialize)]
 pub struct TargetPool {
-    path: String,
-    labels: Vec<String>,
-    wiki: Option<WikiConfig>,
-    wiki_default_limit: Option<usize>,
+    pub path: String,
+    pub labels: Vec<String>,
+    pub wiki: Option<WikiConfig>,
 }
 
 #[derive(Debug, Deserialize)]
 pub struct WikiConfig {
-    default_limit: Option<usize>,
-    queries: Vec<QueryConfig>,
+    pub default_limit: Option<usize>,
+    pub queries: Vec<QueryConfig>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -52,5 +50,52 @@ impl Config {
 
     pub fn list_pools(&self) -> Vec<String> {
         self.target_pools.keys().cloned().collect()
+    }
+
+    pub fn iter_queries(&self, pool: &str, default_limit: Option<usize>) -> Vec<(&str, usize)> {
+        if let Some(tpool) = self.get_pool(pool) {
+            tpool.iter_queries(default_limit)
+        } else {
+            error!("cant find pool '{}'", pool);
+            Vec::new()
+        }
+    }
+
+    pub fn dest_dir(&self, pool: &str) -> anyhow::Result<PathBuf> {
+        if let Some(tpool) = self.get_pool(pool) {
+            tpool.dest_dir()
+        } else {
+            error!("cant find pool '{}'", pool);
+            anyhow::bail!("couldnt find pool '{}'", pool);
+        }
+    }
+}
+
+impl TargetPool {
+    pub fn iter_queries(&self, default_limit: Option<usize>) -> Vec<(&str, usize)> {
+        let mut out = Vec::new();
+
+        if let Some(wiki) = &self.wiki {
+            for q in &wiki.queries {
+                let limit = q
+                    .limit
+                    .or(default_limit)
+                    .or(wiki.default_limit)
+                    .unwrap_or(100);
+
+                out.push((q.query.as_str(), limit));
+            }
+        }
+        out
+    }
+
+    pub fn dest_dir(&self) -> anyhow::Result<PathBuf> {
+        let expanded = shellexpand::tilde(&self.path).into_owned();
+        let pbuf = PathBuf::from(expanded);
+        if !pbuf.exists() {
+            info!("creating directory: {}", pbuf.display());
+            std::fs::create_dir_all(&pbuf)?;
+        }
+        Ok(pbuf)
     }
 }
