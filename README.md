@@ -1,6 +1,65 @@
 psitool
 =======
 
+psitool is a 100% free and open-source toolset built in Rust to help you practice Remote Viewing and download and
+maintain target pools, as well as pick a training image.
+
+The main tool is `psi-target-pool`. Assuming you have a valid config at `~/.psitool.yaml` (see Config Format below),
+and have downloaded target images (see `psi-wm-downloader` utility help section below), then you can use the main
+binary to generate a 100% blind remote-viewing target.
+
+    Usage: psi-target-pool [OPTIONS]
+
+    Options:
+      -v, --verbose                        verbose logging (debug logs)
+      -c, --config <CONFIG>                the config with the target pools [default: ~/.psitool.yaml]
+      -p, --pools <POOLS>                  the named target pool to read from (included unless excluded via label)
+      -i, --include-label <INCLUDE_LABEL>  the target pools to read from, including this label
+      -x, --exclude-label <EXCLUDE_LABEL>  the target pools to read from, EXCLUDING this label
+      -h, --help                           Print help
+      -V, --version                        Print version
+
+Basically, if no options are passed, it will use every pool you defined in the config, with every JPEG in each of
+their directories.
+
+The output will look like this when run from the command-line, and then you can press Enter to see the target:
+
+    $ psi-target-pool
+    [2025-09-27T09:48:43Z] INFO: including pool 'training' because no options passed (all pools)
+    [2025-09-27T09:48:43Z] INFO: including pool 'personal' because no options passed (all pools)
+    [2025-09-27T09:48:43Z] INFO: found 2 target pools to match
+    [2025-09-27T09:48:43Z] INFO: pool ~/Documents/rv_pools/train: 221 jpgs
+    [2025-09-27T09:48:43Z] INFO: pool ~/Documents/rv_pools/personal_pool: 0 jpgs
+    [2025-09-27T09:48:43Z] INFO: Total jpgs: 221
+    [2025-09-27T09:48:43Z] INFO: Chose rvuid R-2DTH-GZW5-W9FMX29F6HJ52Q8N9C
+    Target: R-2DTH-GZW5-W9FMX29F6HJ52Q8N9C
+    Press ENTER to see target.
+    Remote viewer, begin.
+
+Notice the RVUID provided, `R-2DTH-GZW5-W9FMX29F6HJ52Q8N9C`. This is generated via the uuid5 function, which is
+non-random and generated using the actual bytes of the jpeg. The same exact file (bit by bit) will generate the same
+"RVUID", or Remote Viewing Unique Identifier.
+
+This is like a UUID, except it uses base-32 digits (all digits, most uppercase letters except I/L/O/U since they
+can be confused with 1/0), and it splits the 128-bits into 3 sections with a static `R-` prefix.
+
+Basically, as a remote viewer it should be enough to just write `R-2DTH-GZW5` as above, but that is just 40-bits. You
+can always save it to file, or I will write a utility in the future to find the image by RVUID (short and long).
+
+Right now, it will wait until you press enter so you can practice, then see the target image. I will add some helpers
+to work with it to also output the description from the YAML files that are coupled with each downloaded JPEG from
+wikimedia.
+
+You can _always_ create your own jpg/jpegs and throw them in a directory. This is made so you can maintain your own
+private target pools as well.
+
+In the near future, it will also supports text files with the `.target` extension, so you can write out your own
+target like so:
+
+    echo "The workers burying the body of Alexander the Great, where and when he was buried." > ~/Documents/pool_dir/atg.target
+
+In this case, it will use the bytes of the text file just as it would the JPG so you still get a normal RVUID.
+
 Config Format
 -------------
 
@@ -45,7 +104,7 @@ will be created if it does not exist when being downloaded to).
 The `training` pool is interesting here because it provides a specification about what it will download from wikimedia
 if you want to generate all the target pool images to use for training purposes.
 
-It will queyr for each of those, using the `limit` provided such as `500` for the `animal` query, otherwise if limit
+It will query for each of those, using the `limit` provided such as `500` for the `animal` query, otherwise if limit
 is not specified it will use `2000`.
 
 psi-wm-downloader
