@@ -1,2 +1,5 @@
 /target
 tags
+*.py
+*.pyc
+/downloads
