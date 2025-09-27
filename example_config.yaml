@@ -1,14 +1,24 @@
 target_pools:
   training:
     path: ~/Documents/rv_pools/train
-    labels: [train, wm, online]
+    labels: [train, wiki]
     wiki:
-      default_limit: 100
+      default_limit: 2000
       queries:
         - query: animal
         - query: building
-          limit: 1000
         - query: landscape
+        - query: vehicle
+        - query: portrait
+        - query: sculpture
+        - query: painting
+        - query: object
+        - query: artifact
+        - query: tool
+        - query: music
+        - query: food
+        - query: statue
+        - query: historical
+        - query: event
   personal:
     path: ~/Documents/rv_pools/personal_pool
-    labels: [train, personal]

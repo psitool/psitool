@@ -81,6 +81,7 @@ struct ExtValue {
 
 #[derive(Debug, serde::Serialize)]
 struct YamlData {
+    query: String,
     image_description: serde_json::Value,
     datetime_original: serde_json::Value,
     img_metadata: HashMap<String, serde_json::Value>,
@@ -128,7 +129,11 @@ fn valid_license(license: &str) -> bool {
     normalized == "CC0" || normalized == "PUBLIC DOMAIN" || RE_CC_BY.is_match(&normalized)
 }
 
-fn download_and_save(page: &Page, out_dir: &str) -> anyhow::Result<Option<(String, String)>> {
+fn download_and_save(
+    query: &str,
+    page: &Page,
+    out_dir: &str,
+) -> anyhow::Result<Option<(String, String)>> {
     debug!("download_and_save {} to {}", page, out_dir);
     let client = make_client()?;
     let Some(info) = page.imageinfo.as_ref().and_then(|v| v.first()) else {
@@ -197,6 +202,7 @@ fn download_and_save(page: &Page, out_dir: &str) -> anyhow::Result<Option<(Strin
     }
 
     let yaml_data = YamlData {
+        query: query.to_string(),
         image_description: image_description.clone(),
         datetime_original: datetime_original.clone(),
         img_metadata,
@@ -231,7 +237,7 @@ fn main() -> anyhow::Result<()> {
         let dest_dir = dest_dir_buf.to_str().unwrap();
         let results = search_images(query, limit)?;
         for page in results {
-            if let Some((img, meta)) = download_and_save(&page, dest_dir)? {
+            if let Some((img, meta)) = download_and_save(query, &page, dest_dir)? {
                 info!("Saved img {} and metadata {}", img, meta);
             } else {
                 warn!("didnt get anything with Page {}", page);
