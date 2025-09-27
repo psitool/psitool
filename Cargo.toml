@@ -8,6 +8,7 @@ license = "GPL-3.0-or-later"
 readme = "README.md"
 keywords = ["remoteviewing", "psi", "clairvoyance", "remoteview", "rv", "parapsychology"]
 exclude = ["target/*", ".github/*"]
+include = ["src/**", "Cargo.toml", "README.md", "example_config.yaml"]
 
 [dependencies]
 anyhow = "1.0.100"
