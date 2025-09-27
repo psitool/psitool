@@ -23,6 +23,12 @@ struct Args {
     verbose: bool,
 
     #[arg(
+        long,
+        help = "only download CC0, CC-BY, and PUBLIC DOMAIN so they can be rebundled"
+    )]
+    free_only: bool,
+
+    #[arg(
         short,
         long,
         default_value = "~/.psitool.yaml",
@@ -139,6 +145,7 @@ fn download_and_save(
     query: &str,
     page: &Page,
     out_dir: &str,
+    free_only: bool,
 ) -> anyhow::Result<Option<(String, String)>> {
     debug!("download_and_save {} to {}", page, out_dir);
     let client = make_client(None)?;
@@ -156,11 +163,13 @@ fn download_and_save(
         .unwrap_or("".to_string())
         .replace('"', "");
 
-    if !valid_license(&license_short) {
-        info!("INVALID license: {} was {}", page, license_short);
-        return Ok(None);
-    } else {
-        info!("validated license: {} was {}", page, license_short);
+    if free_only {
+        if !valid_license(&license_short) {
+            info!("INVALID license: {} was {}", page, license_short);
+            return Ok(None);
+        } else {
+            info!("validated license: {} was {}", page, license_short);
+        }
     }
 
     fs::create_dir_all(out_dir)?;
@@ -243,7 +252,7 @@ fn main() -> anyhow::Result<()> {
         let dest_dir = dest_dir_buf.to_str().unwrap();
         let results = search_images(query, limit)?;
         for page in results {
-            if let Some((img, meta)) = download_and_save(query, &page, dest_dir)? {
+            if let Some((img, meta)) = download_and_save(query, &page, dest_dir, args.free_only)? {
                 info!("Saved img {} and metadata {}", img, meta);
             } else {
                 warn!("didnt get anything with Page {}", page);
