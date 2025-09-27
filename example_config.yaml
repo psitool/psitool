@@ -22,3 +22,4 @@ target_pools:
         - query: event
   personal:
     path: ~/Documents/rv_pools/personal_pool
+    labels: [me]

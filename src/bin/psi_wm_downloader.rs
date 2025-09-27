@@ -8,9 +8,13 @@ use std::fmt;
 use std::fs;
 use std::io::Write;
 use std::path::Path;
+use std::time::Duration;
 
 use psitool::config::Config;
 use psitool::logger;
+
+const DEFAULT_QUERY_TIMEOUT_SECS: u64 = 30;
+const DEFAULT_TIMEOUT_SECS: u64 = 180;
 
 #[derive(Parser, Debug)]
 #[command(author, version, about)]
@@ -89,18 +93,20 @@ struct YamlData {
     license_meta: HashMap<String, serde_json::Value>,
 }
 
-fn make_client() -> anyhow::Result<reqwest::blocking::Client> {
+fn make_client(timeout_secs: Option<u64>) -> anyhow::Result<reqwest::blocking::Client> {
     let user_agent = make_user_agent();
     debug!("using user agent: {}", user_agent);
+    let timeout_secs = timeout_secs.unwrap_or(DEFAULT_TIMEOUT_SECS);
     let client = reqwest::blocking::Client::builder()
         .user_agent(user_agent)
+        .timeout(Duration::from_secs(timeout_secs))
         .build()?;
     Ok(client)
 }
 
 fn search_images(query: &str, limit: usize) -> anyhow::Result<Vec<Page>> {
     debug!("searching for query {} with limit {}", query, limit);
-    let client = make_client()?;
+    let client = make_client(Some(DEFAULT_QUERY_TIMEOUT_SECS))?;
     let params = [
         ("action", "query"),
         ("generator", "search"),
@@ -135,7 +141,7 @@ fn download_and_save(
     out_dir: &str,
 ) -> anyhow::Result<Option<(String, String)>> {
     debug!("download_and_save {} to {}", page, out_dir);
-    let client = make_client()?;
+    let client = make_client(None)?;
     let Some(info) = page.imageinfo.as_ref().and_then(|v| v.first()) else {
         debug!("Couldnt get page.imageinfo of {}", page);
         return Ok(None);
