@@ -3,3 +3,4 @@ tags
 *.py
 *.pyc
 /downloads
+/creds
