@@ -9,6 +9,7 @@ keywords = ["remoteviewing", "psi", "clairvoyance", "remoteview", "rv", "parapsy
 exclude = ["target/*", ".github/*"]
 
 [dependencies]
+uuid = { version = "1.18.1", features = ["v5"] }
 
 [[bin]]
 name = "psi-target-pool"
