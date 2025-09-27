@@ -25,7 +25,8 @@ impl Rvuid {
         let encoded = crockford.encode(uuid.as_bytes());
         let part1 = &encoded[..4];
         let part2 = &encoded[4..8];
-        format!("R-{}-{}", part1, part2)
+        let part3 = &encoded[8..];
+        format!("R-{}-{}-{}", part1, part2, part3)
     }
 }
 
