@@ -32,8 +32,25 @@ pub struct WikiConfig {
 
 #[derive(Debug, Deserialize)]
 pub struct QueryConfig {
+    query: String,
+    limit: Option<usize>,
+    frontloading: Option<Vec<String>>,
+}
+
+pub struct Query {
     pub query: String,
-    pub limit: Option<usize>,
+    pub limit: usize,
+    pub frontloading: Vec<String>,
+}
+
+impl std::fmt::Display for Query {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "Query({}, {}, {:?})",
+            self.query, self.limit, self.frontloading
+        )
+    }
 }
 
 impl Config {
@@ -61,7 +78,7 @@ impl Config {
         self.target_pools.keys().cloned().collect()
     }
 
-    pub fn iter_queries(&self, pool: &str, default_limit: Option<usize>) -> Vec<(&str, usize)> {
+    pub fn iter_queries(&self, pool: &str, default_limit: Option<usize>) -> Vec<Query> {
         if let Some(tpool) = self.get_pool(pool) {
             tpool.iter_queries(default_limit)
         } else {
@@ -81,7 +98,7 @@ impl Config {
 }
 
 impl TargetPool {
-    pub fn iter_queries(&self, default_limit: Option<usize>) -> Vec<(&str, usize)> {
+    pub fn iter_queries(&self, default_limit: Option<usize>) -> Vec<Query> {
         let mut out = Vec::new();
 
         if let Some(wiki) = &self.wiki {
@@ -92,7 +109,13 @@ impl TargetPool {
                     .or(wiki.default_limit)
                     .unwrap_or(100);
 
-                out.push((q.query.as_str(), limit));
+                let frontloading = q.frontloading.clone().unwrap_or(Vec::new());
+
+                out.push(Query {
+                    query: q.query.clone(),
+                    limit,
+                    frontloading,
+                });
             }
         }
         out

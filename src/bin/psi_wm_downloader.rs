@@ -12,6 +12,7 @@ use std::time::Duration;
 
 use psitool::config::Config;
 use psitool::logger;
+use psitool::target::YamlData;
 
 const DEFAULT_QUERY_TIMEOUT_SECS: u64 = 30;
 const DEFAULT_TIMEOUT_SECS: u64 = 180;
@@ -89,16 +90,6 @@ struct ExtValue {
     value: serde_json::Value,
 }
 
-#[derive(Debug, serde::Serialize)]
-struct YamlData {
-    query: String,
-    image_description: serde_json::Value,
-    datetime_original: serde_json::Value,
-    img_metadata: HashMap<String, serde_json::Value>,
-    license: String,
-    license_meta: HashMap<String, serde_json::Value>,
-}
-
 fn make_client(timeout_secs: Option<u64>) -> anyhow::Result<reqwest::blocking::Client> {
     let user_agent = make_user_agent();
     debug!("using user agent: {}", user_agent);
@@ -146,6 +137,7 @@ fn download_and_save(
     page: &Page,
     out_dir: &str,
     free_only: bool,
+    frontloading: Vec<String>,
 ) -> anyhow::Result<Option<(String, String)>> {
     debug!("download_and_save {} to {}", page, out_dir);
     let client = make_client(None)?;
@@ -218,6 +210,7 @@ fn download_and_save(
 
     let yaml_data = YamlData {
         query: query.to_string(),
+        frontloading,
         image_description: image_description.clone(),
         datetime_original: datetime_original.clone(),
         img_metadata,
@@ -246,13 +239,16 @@ fn main() -> anyhow::Result<()> {
         anyhow::bail!("pool '{}' not found!'", args.pool);
     }
     let tpool = cfg.get_pool(&args.pool).unwrap();
-    for (query, limit) in tpool.iter_queries(args.limit) {
-        info!("query {} and limit {}", query, limit);
+    for query in tpool.iter_queries(args.limit) {
+        info!("query: {}", query);
         let dest_dir_buf = tpool.dest_dir()?;
         let dest_dir = dest_dir_buf.to_str().unwrap();
-        let results = search_images(query, limit)?;
+        let results = search_images(&query.query, query.limit)?;
         for page in results {
-            if let Some((img, meta)) = download_and_save(query, &page, dest_dir, args.free_only)? {
+            let frontloading = query.frontloading.clone();
+            if let Some((img, meta)) =
+                download_and_save(&query.query, &page, dest_dir, args.free_only, frontloading)?
+            {
                 info!("Saved img {} and metadata {}", img, meta);
             } else {
                 warn!("didnt get anything with Page {}", page);

@@ -20,6 +20,16 @@ target_pools:
         - query: statue
         - query: historical
         - query: event
+  training_with_frontloading:
+    path: ~/Documents/rv_pools/train_with_fl
+    labels: [train, frontload, wiki]
+    wiki:
+      default_limit: 1000
+      queries:
+        - query: historical event
+          frontloading: ["historical event"]
+        - query: natural landscape
+          frontloading: ["natural landscape", "more specific frontloading", "even more specific"]
   personal:
     path: ~/Documents/rv_pools/personal_pool
     labels: [me]
