@@ -1,16 +1,12 @@
-use anyhow::Context;
 use log::{error, info};
 use rand::distr::weighted::WeightedIndex;
-use rand::prelude::IndexedRandom;
 use rand::prelude::*;
-use rand::rng;
 use serde::Deserialize;
 use std::collections::HashMap;
-use std::ffi::OsStr;
 use std::fs;
 use std::path::PathBuf;
 
-use crate::rvuid::Rvuid;
+use crate::target::Target;
 
 #[derive(Debug, Deserialize)]
 pub struct Config {
@@ -131,68 +127,14 @@ impl TargetPool {
         Ok(pbuf)
     }
 
-    pub fn random_target(&self) -> anyhow::Result<(PathBuf, Option<PathBuf>, Rvuid)> {
+    pub fn random_target(&self) -> anyhow::Result<Target> {
         let dir = self.dest_dir()?;
-        let jpgs: Vec<PathBuf> = fs::read_dir(dir.clone())?
-            .filter_map(|entry| {
-                entry.ok().and_then(|e| {
-                    let p = e.path();
-                    match p
-                        .extension()
-                        .and_then(OsStr::to_str)
-                        .map(|s| s.to_ascii_lowercase())
-                    {
-                        Some(ext) if ext == "jpg" || ext == "jpeg" => Some(p),
-                        _ => None,
-                    }
-                })
-            })
-            .collect();
-
-        if jpgs.is_empty() {
-            anyhow::bail!("no JPG/JPEG files found in {}", dir.display());
-        }
-
-        let mut rng = rng();
-        let chosen = jpgs
-            .choose(&mut rng)
-            .cloned()
-            .expect("should have chosen a jpeg");
-
-        let yaml_match = chosen.file_stem().and_then(OsStr::to_str).and_then(|stem| {
-            let candidate = dir.join(format!("{}.yaml", stem));
-            if candidate.exists() {
-                Some(candidate)
-            } else {
-                None
-            }
-        });
-
-        let img_bytes = fs::read(&chosen)
-            .with_context(|| format!("failed to read image bytes from {}", chosen.display()))?;
-        let rvuid = Rvuid::from_bytes(&img_bytes);
-
-        Ok((chosen, yaml_match, rvuid))
+        Target::random_from_dir(&dir)
     }
 
-    pub fn total_images(&self) -> anyhow::Result<usize> {
+    pub fn total_targets(&self) -> anyhow::Result<usize> {
         let dir = self.dest_dir()?;
-        let count = fs::read_dir(dir)?
-            .filter_map(|entry| {
-                entry.ok().and_then(|e| {
-                    let p = e.path();
-                    match p
-                        .extension()
-                        .and_then(OsStr::to_str)
-                        .map(|s| s.to_ascii_lowercase())
-                    {
-                        Some(ext) if ext == "jpg" || ext == "jpeg" => Some(()),
-                        _ => None,
-                    }
-                })
-            })
-            .count();
-        Ok(count)
+        Ok(Target::all_from_dir(&dir)?.len())
     }
 }
 
@@ -201,7 +143,7 @@ pub fn random_pool<'a>(tpools: &'a [&TargetPool]) -> anyhow::Result<&'a TargetPo
 
     let weights: Vec<usize> = tpools
         .iter()
-        .map(|tp| tp.total_images().unwrap_or(0)) // handle errors gracefully
+        .map(|tp| tp.total_targets().unwrap_or(0)) // handle errors gracefully
         .collect();
 
     if weights.iter().all(|&w| w == 0) {

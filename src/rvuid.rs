@@ -6,6 +6,7 @@ pub const BYTES_RV: [u8; 16] = *b"RV\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00
 pub const NAMESPACE_RV: Uuid = Uuid::from_bytes(BYTES_RV);
 
 // A Remote Viewing UID is like a UUID, but easy to write down, and based on UUIDv5.
+#[derive(Clone, Debug)]
 pub struct Rvuid {
     pub uuid: Uuid,
     pub rvuid: String,

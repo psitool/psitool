@@ -23,6 +23,9 @@ struct Args {
     #[arg(short, long, help = "verbose logging (debug logs)")]
     verbose: bool,
 
+    #[arg(short, long, help = "quiet logging (warn+ logs)")]
+    quiet: bool,
+
     #[arg(
         long,
         help = "only download CC0, CC-BY, and PUBLIC DOMAIN so they can be rebundled"
@@ -227,7 +230,7 @@ fn download_and_save(
 
 fn main() -> anyhow::Result<()> {
     let args = Args::parse();
-    logger::init(args.verbose);
+    logger::init(args.verbose, args.quiet);
     let cfg = Config::load(&args.config)?;
     info!("pool chosen was: {}", args.pool);
     if !cfg.has_pool(&args.pool) {

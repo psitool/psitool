@@ -1,4 +1,4 @@
-use clap::Parser;
+use clap::{ArgAction, Parser};
 use log::{info, warn};
 use std::io::{self, Write};
 
@@ -10,6 +10,15 @@ use psitool::logger;
 struct Args {
     #[arg(short, long, help = "verbose logging (debug logs)")]
     verbose: bool,
+
+    #[arg(short, long, help = "quiet logging (warn+ logs)")]
+    quiet: bool,
+
+    #[arg(short, action = ArgAction::Count, help = "how much to frontload, none by default (pass -f for 1 level of frontloading, -ff for 2, -fff for 3...)")]
+    frontload: u8,
+
+    #[arg(short, long, help = "dont open the target after")]
+    skip_open: bool,
 
     #[arg(
         short,
@@ -43,7 +52,7 @@ struct Args {
 
 fn main() -> anyhow::Result<()> {
     let args = Args::parse();
-    logger::init(args.verbose);
+    logger::init(args.verbose, args.quiet);
     let cfg = Config::load(&args.config)?;
     let mut tpools: Vec<&TargetPool> = Vec::new();
     for pool in args.pools.clone() {
@@ -83,21 +92,37 @@ fn main() -> anyhow::Result<()> {
     info!("found {} target pools to match", tpools.len());
     let mut total = 0usize;
     for tpool in tpools.clone() {
-        let tpool_total = tpool.total_images()?;
+        let tpool_total = tpool.total_targets()?;
         total += tpool_total;
-        info!("pool {}: {} jpgs", tpool.path, tpool_total);
+        info!("pool {}: {} targets", tpool.path, tpool_total);
     }
-    info!("Total jpgs: {}", total);
+    info!("Total targets: {}", total);
 
     let tpool = random_pool(&tpools)?;
-    let (img_path, _yaml_path, rvuid) = tpool.random_target()?;
-    info!("Chose rvuid {}", rvuid);
-    println!("Target: {}", rvuid);
-    println!("Press ENTER to see target.");
-    println!("Remote viewer, begin.");
+    let target = tpool.random_target()?;
+    info!("Chose rvuid {}", target.rvuid);
+    println!("Target: {}", target.rvuid);
+    if args.frontload > 0 {
+        let range_end: usize = target.frontloading.len().min(args.frontload as usize);
+        let frontloading = &target.frontloading[..range_end];
+        println!("Frontloading: {:?}", frontloading);
+    }
+    println!("Remote viewer, begin viewing.");
+    println!("Press ENTER when complete.");
     io::stdout().flush()?;
     let mut buf = String::new();
     io::stdin().read_line(&mut buf)?;
-    open::that(&img_path)?;
+    if !args.skip_open {
+        open::that(&target.path)?;
+    }
+    println!("Path: {}", target.path.display());
+    if let Some(ref meta_path) = target.meta_path {
+        println!("YAML meta: {}", meta_path.display());
+    }
+    if !target.meta.is_empty() {
+        for (key, val) in target.iter_meta() {
+            println!("{}: {}", key, val);
+        }
+    }
     Ok(())
 }
