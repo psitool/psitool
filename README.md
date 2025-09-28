@@ -179,3 +179,11 @@ CC-BY requires you (I believe, I am not a lawyer) to redistribute if you give cr
 YAML files that are associated with each JPG (same path, but + ".yaml") include that License data provided from
 wikimedia. You _should_ be able to use that, _I think_. Again, I'm not a lawyer, but this is my best effort to allow
 you to download free content and share it. I solely provide this downloader, none of the images.
+
+Future Features
+---------------
+
+I'm open to suggestions, so feel free to contact me at psitool #at# protonmail #dot# com
+
+The next obvious feature I'm planning is Associated Remote Viewing functionality.
+
