@@ -87,7 +87,7 @@ impl fmt::Display for Target {
 impl Target {
     pub fn parse(path: &Path) -> anyhow::Result<Self> {
         let img_bytes = fs::read(path)
-            .with_context(|| format!("failed to read image bytes from {}", path.display()))?;
+            .with_context(|| format!("failed to read bytes from {}", path.display()))?;
         let rvuid = Rvuid::from_bytes(&img_bytes);
         let maybe_meta_path = Self::maybe_yaml(path);
         let meta_path = maybe_meta_path.clone();

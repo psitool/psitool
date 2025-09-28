@@ -1,6 +1,6 @@
 [package]
 name = "psitool"
-version = "0.3.0"
+version = "0.4.0"
 edition = "2024"
 authors = ["psitool <psitool@protonmail.com>"]
 description = "The 100% free and open-source Remote Viewing toolset."
@@ -35,3 +35,11 @@ path = "src/bin/psi_target_pool.rs"
 [[bin]]
 name = "psi-wm-downloader"
 path = "src/bin/psi_wm_downloader.rs"
+
+[[bin]]
+name = "psi-rvuid-gen"
+path = "src/bin/psi_rvuid_gen.rs"
+
+[[bin]]
+name = "psi-rvuid-find"
+path = "src/bin/psi_rvuid_find.rs"

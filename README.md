@@ -213,12 +213,63 @@ YAML files that are associated with each JPG (same path, but + ".yaml") include 
 wikimedia. You _should_ be able to use that, _I think_. Again, I'm not a lawyer, but this is my best effort to allow
 you to download free content and share it. I solely provide this downloader, none of the images.
 
+psi-rvuid-gen
+-------------
+
+This utility generates RVUID hashes from paths.
+
+    Usage: psi-rvuid-gen [OPTIONS] [PATHS]...
+
+    Arguments:
+      [PATHS]...  paths to hash and determine rvuid
+
+    Options:
+      -v, --verbose  verbose logging (debug logs)
+      -q, --quiet    quiet logging (warn+ logs)
+      -h, --help     Print help
+      -V, --version  Print version
+
+Example:
+
+    $ psi-rvuid-gen ./README.md
+    ./README.md = R-4NJX-Z0BV-E9AAHEDRNBNXT8RRC4
+
+    $ psi-rvuid-gen ./README.md src/*
+    ./README.md = R-4NJX-Z0BV-E9AAHEDRNBNXT8RRC4
+    src/config.rs = R-DG4D-A9VQ-XSFX3AQKW95HKNC32M
+    src/lib.rs = R-3344-2KR0-ZXEEDBTPPS9RE9MV5R
+    src/logger.rs = R-Z562-F0JF-NHEVXA5SAYG9G2V928
+    src/rvuid.rs = R-PHAJ-P5S5-5197V7YXRRWM4TBA30
+    src/target.rs = R-3BVX-6WZ6-TSB070P33PHWWJ0A2W
+
+psi-rvuid-find
+--------------
+
+This utility will look for provided RVUIDs (but they must be the full 128-bit RVUID, not the short version).
+
+    Usage: psi-rvuid-find [OPTIONS] [RVUIDS]...
+
+    Arguments:
+      [RVUIDS]...  the RVUIDs to look for
+
+    Options:
+      -v, --verbose          verbose logging (debug logs)
+      -q, --quiet            quiet logging (warn+ logs)
+      -D, --find-dupes       keep searching even if you already found every RVUID (find potential dupes)
+      -c, --config <CONFIG>  the config with the target pools (this is where it will look for the RVUID) [default: ~/.psitool.yaml]
+      -h, --help             Print help
+      -V, --version          Print version
+
+Example:
+
+    $ psi-rvuid-find R-BRHR-XGP6-E5BENEWQXDBEXBKN4W R-ZANQ-CJK4-JD969E5TFGATJCX3VW
+
+    R-BRHR-XGP6-E5BENEWQXDBEXBKN4W found at: /home/me/Documents/rv_pools/train/2014_Prowincja_Sjunik,_Klasztor_Tatew_(19).jpg
+    R-ZANQ-CJK4-JD969E5TFGATJCX3VW found at: /home/me/Documents/rv_pools/train/2013-Aerial-Mount_of_Olives.jpg
+
 Roadmap
 -------
 
 I'm open to suggestions, so feel free to contact me at psitool #at# protonmail #dot# com
 
 The next obvious feature I'm planning is Associated Remote Viewing functionality.
-
-- ARV
-- new utility: `psi-find-rvuid $RVUID`

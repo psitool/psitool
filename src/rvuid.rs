@@ -1,8 +1,9 @@
-use anyhow::anyhow;
+use anyhow::{Context, anyhow};
 use data_encoding::Specification;
 use serde::de::{self, Deserialize, Deserializer};
 use serde::ser::{Serialize, Serializer};
 use std::fmt;
+use std::path::Path;
 use std::str::FromStr;
 use uuid::Uuid;
 
@@ -11,13 +12,20 @@ pub const NAMESPACE_RV: Uuid = Uuid::from_bytes(BYTES_RV);
 pub const SPEC_BASE32: &str = "0123456789ABCDEFGHJKMNPQRSTVWXYZ";
 
 // A Remote Viewing UID is like a UUID, but easy to write down, and based on UUIDv5.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Rvuid {
     pub uuid: Uuid,
     pub rvuid: String,
 }
 
 impl Rvuid {
+    pub fn from_path(path: &Path) -> anyhow::Result<Self> {
+        let bytes = std::fs::read(path)
+            .with_context(|| format!("failed to read bytes from {}", path.display()))?;
+        let uuid = uuid_from_bytes(&bytes);
+        let rvuid = Self::rvuid_from_uuid(uuid);
+        Ok(Self { uuid, rvuid })
+    }
     pub fn from_bytes(data: &[u8]) -> Self {
         let uuid = uuid_from_bytes(data);
         let rvuid = Self::rvuid_from_uuid(uuid);

@@ -137,6 +137,12 @@ impl TargetPool {
         let dir = self.dest_dir()?;
         Ok(Target::all_from_dir(&dir, completed_rvuids)?.len())
     }
+
+    pub fn all_targets(&self) -> anyhow::Result<Vec<Target>> {
+        let no_rvuids: Vec<Rvuid> = Vec::new();
+        let dir = self.dest_dir()?;
+        Target::all_from_dir(&dir, &no_rvuids)
+    }
 }
 
 pub fn random_pool<'a>(
