@@ -12,6 +12,9 @@ binary to generate a 100% blind remote-viewing target.
 
     Options:
       -v, --verbose                        verbose logging (debug logs)
+      -q, --quiet                          quiet logging (warn+ logs)
+      -f...                                how much to frontload, none by default (pass -f for 1 level of frontloading, -ff for 2, -fff for 3...)
+      -s, --skip-open                      dont open the target after
       -c, --config <CONFIG>                the config with the target pools [default: ~/.psitool.yaml]
       -p, --pools <POOLS>                  the named target pool to read from (included unless excluded via label)
       -i, --include-label <INCLUDE_LABEL>  the target pools to read from, including this label
@@ -19,8 +22,8 @@ binary to generate a 100% blind remote-viewing target.
       -h, --help                           Print help
       -V, --version                        Print version
 
-Basically, if no options are passed, it will use every pool you defined in the config, with every JPEG in each of
-their directories.
+Basically, if no options are passed, it will use every pool you defined in the config, with every JPEG/JPG/SVG/TARGET
+in each of their directories.
 
 The output will look like this when run from the command-line, and then you can press Enter to see the target:
 
@@ -50,20 +53,32 @@ Right now, it will wait until you press enter so you can practice, then see the 
 to work with it to also output the description from the YAML files that are coupled with each downloaded JPEG from
 wikimedia.
 
-You can _always_ create your own jpg/jpegs and throw them in a directory. This is made so you can maintain your own
-private target pools as well.
+You can _always_ create your own jpg/jpeg/target files and throw them in a directory. This is made so you can maintain
+your own private target pools as well.
 
-In the near future, it will also supports text files with the `.target` extension, so you can write out your own
-target like so:
+It also supports text files with the `.target` extension, so you can write out your own target like so:
 
     echo "The workers burying the body of Alexander the Great, where and when he was buried." > ~/Documents/pool_dir/atg.target
 
-In this case, it will use the bytes of the text file just as it would the JPG so you still get a normal RVUID.
+For example:
+
+    $ psi-target-pool -i me -q
+    Target: R-THZP-Q1S2-3S9EKA24H6CK7DN9F4
+    Remote viewer, begin viewing.
+    Press ENTER when complete.
+
+    Path: ~/Documents/rv_pools/personal_pool/bar.baz.target
+    Target Text:
+    San Francisco, the golden gate bridge.
+
+
+In this case, it will use the bytes of the text file just as it would the JPG so you still get a normal RVUID that is
+specific to the _exact_ target text.
 
 Config Format
 -------------
 
-The config file is by default `~/.psitool.yaml` and should look like this:
+The config file is by default `~/.psitool.yaml` and should look something like this:
 
     target_pools:
       training:
@@ -73,7 +88,6 @@ The config file is by default `~/.psitool.yaml` and should look like this:
           default_limit: 2000
           queries:
             - query: animal
-              limit: 500
             - query: building
             - query: landscape
             - query: vehicle
@@ -85,27 +99,51 @@ The config file is by default `~/.psitool.yaml` and should look like this:
             - query: tool
             - query: music
             - query: food
-              limit: 500
             - query: statue
             - query: historical
+              limit: 5000
             - query: event
-      training2:
-        path: ~/Documents/rv_pools/train2
-        labels: [train]
+      training_with_frontloading:
+        path: ~/Documents/rv_pools/train_with_fl
+        labels: [train, frontload, wiki]
+        wiki:
+          default_limit: 1000
+          queries:
+            - query: historical event
+              frontloading: ["historical event"]
+            - query: natural landscape
+              frontloading: ["natural landscape", "more specific frontloading", "even more specific"]
       personal:
         path: ~/Documents/rv_pools/personal_pool
         labels: [me]
 
 This defines all your target pools, keyed by their name.
 
-Above, you see two pools. One is the `personal` pool with label `me`, and has a path to a document directory (which
+Above, you see three pools. One is the `personal` pool with label `me`, and has a path to a document directory (which
 will be created if it does not exist when being downloaded to).
 
 The `training` pool is interesting here because it provides a specification about what it will download from wikimedia
-if you want to generate all the target pool images to use for training purposes.
+if you want to generate all the target pool images to use for training purposes. Each query pattern will ask for 2000
+images, unless you put in a custom limit like under "historical" in the above example, which will get 5000 instead of
+2000.
 
-It will query for each of those, using the `limit` provided such as `500` for the `animal` query, otherwise if limit
-is not specified it will use `2000`.
+It will query for each of those, using the `limit` provided.
+
+Notice the other pool `training_with_frontloading`, where each query has a list of frontloading phrases.
+
+These are completely optional, and even if you save frontloading data, you have to request psi-target-pool to output
+it when remote viewing. By default, it shows none. If you want the first item (most generic frontloading) from the
+list, pass `-f`, which might be "historical event" or "natural landscape" as seen above. If you want the next more
+specific frontloading, pass `-ff`, and then `-fff`, and so on. It will only output what you ask for, if it has it.
+
+What this does is just download the data, and save the metadata in the associated `$path.jpg.yaml` under a key
+`frontloading`. You can edit this for any target you have and customize the YAML. This is just a helper for
+downloading training datasets.
+
+Be aware that the query might not always give you an exact example of what you frontload. For example, if you put
+"biological" as frontloading for the animal query, this is not exactly correct for the "animal" query which sometimes
+gives you images like an amulet shaped like a wolf. I would suggest using something more generic, or customize the
+yaml files manually.
 
 psi-wm-downloader
 -----------------

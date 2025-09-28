@@ -36,7 +36,7 @@ impl YamlData {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum TargetType {
     Text,
     Jpeg,

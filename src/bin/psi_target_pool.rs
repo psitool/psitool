@@ -1,9 +1,10 @@
 use clap::{ArgAction, Parser};
-use log::{info, warn};
+use log::{error, info, warn};
 use std::io::{self, Write};
 
 use psitool::config::{Config, TargetPool, random_pool};
 use psitool::logger;
+use psitool::target::TargetType;
 
 #[derive(Parser, Debug)]
 #[command(author, version, about)]
@@ -112,10 +113,22 @@ fn main() -> anyhow::Result<()> {
     io::stdout().flush()?;
     let mut buf = String::new();
     io::stdin().read_line(&mut buf)?;
-    if !args.skip_open {
+    println!("Path: {}", target.path.display());
+    if target.target_type == TargetType::Text {
+        match std::fs::read_to_string(&target.path) {
+            Ok(contents) => println!("Target Text:\n{}", contents),
+            _ => {
+                if args.skip_open {
+                    error!("Failed to read target text. You may need to open it manually.");
+                } else {
+                    open::that(&target.path)?;
+                }
+            }
+        }
+    } else if !args.skip_open {
+        // We don't open text files if we can read them above as text.
         open::that(&target.path)?;
     }
-    println!("Path: {}", target.path.display());
     if let Some(ref meta_path) = target.meta_path {
         println!("YAML meta: {}", meta_path.display());
     }
