@@ -1,12 +1,17 @@
+use anyhow::anyhow;
 use data_encoding::Specification;
+use serde::de::{self, Deserialize, Deserializer};
+use serde::ser::{Serialize, Serializer};
 use std::fmt;
+use std::str::FromStr;
 use uuid::Uuid;
 
 pub const BYTES_RV: [u8; 16] = *b"RV\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00";
 pub const NAMESPACE_RV: Uuid = Uuid::from_bytes(BYTES_RV);
+pub const SPEC_BASE32: &str = "0123456789ABCDEFGHJKMNPQRSTVWXYZ";
 
 // A Remote Viewing UID is like a UUID, but easy to write down, and based on UUIDv5.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct Rvuid {
     pub uuid: Uuid,
     pub rvuid: String,
@@ -21,7 +26,7 @@ impl Rvuid {
     pub fn rvuid_from_uuid(uuid: Uuid) -> String {
         // Crockford-like Base32 alphabet (no I, L, O, U since they're a big ambiguous")
         let mut spec = Specification::new();
-        spec.symbols.push_str("0123456789ABCDEFGHJKMNPQRSTVWXYZ");
+        spec.symbols.push_str(SPEC_BASE32);
         let crockford = spec.encoding().unwrap();
         let encoded = crockford.encode(uuid.as_bytes());
         let part1 = &encoded[..4];
@@ -37,6 +42,58 @@ impl fmt::Display for Rvuid {
     }
 }
 
+impl FromStr for Rvuid {
+    type Err = anyhow::Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        if !s.starts_with("R-") {
+            anyhow::bail!("invalid RVUID: must start with 'R-' prefix.");
+        }
+
+        let raw = s.trim_start_matches("R-").replace('-', "");
+
+        let mut spec = Specification::new();
+        spec.symbols.push_str(SPEC_BASE32);
+        let decoder = spec.encoding().unwrap();
+
+        let bytes = decoder
+            .decode(raw.as_bytes())
+            .map_err(|e| anyhow!("base32 decode error: {}", e))?;
+
+        if bytes.len() != 16 {
+            return Err(anyhow!("expected 16 bytes for UUID, got {}", bytes.len()));
+        }
+
+        let uuid = Uuid::from_slice(&bytes)?;
+
+        Ok(Rvuid {
+            uuid,
+            rvuid: s.to_string(),
+        })
+    }
+}
+
+impl<'de> Deserialize<'de> for Rvuid {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let s = String::deserialize(deserializer)?;
+
+        // parse from string
+        Rvuid::from_str(&s).map_err(de::Error::custom)
+    }
+}
+
+impl Serialize for Rvuid {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        serializer.serialize_str(&self.rvuid)
+    }
+}
+
 fn uuid_from_bytes(data: &[u8]) -> Uuid {
     Uuid::new_v5(&NAMESPACE_RV, data)
 }
@@ -44,6 +101,7 @@ fn uuid_from_bytes(data: &[u8]) -> Uuid {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use serde::Deserialize;
 
     #[test]
     fn test_uuid_from_bytes() {
@@ -59,5 +117,20 @@ mod tests {
             uuid_from_bytes(&oneval),
             Uuid::new_v5(&NAMESPACE_RV, &oneval2)
         );
+    }
+
+    #[derive(Debug, Deserialize)]
+    struct Foo {
+        id: Rvuid,
+    }
+
+    #[test]
+    fn test_rvuid_deserialize_from_yaml() {
+        let yaml = r#"
+id: "R-2DTH-GZW5-W9FMX29F6HJ52Q8N9C"
+"#;
+
+        let foo: Foo = serde_yaml::from_str(yaml).expect("failed to deserialize");
+        assert_eq!(foo.id.to_string(), "R-2DTH-GZW5-W9FMX29F6HJ52Q8N9C");
     }
 }

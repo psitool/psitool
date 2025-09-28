@@ -8,14 +8,21 @@ The main tool is `psi-target-pool`. Assuming you have a valid config at `~/.psit
 and have downloaded target images (see `psi-wm-downloader` utility help section below), then you can use the main
 binary to generate a 100% blind remote-viewing target.
 
+Completed targets are stored in `~/.psitool_completed_targets.yaml` by default, but you can point at any path.
+Comment them out if you want to reuse those targets, or pass `--reuse-targets` as an argument to reuse all of them.
+
+    The 100% free and open-source Remote Viewing toolset.
+
     Usage: psi-target-pool [OPTIONS]
 
     Options:
       -v, --verbose                        verbose logging (debug logs)
       -q, --quiet                          quiet logging (warn+ logs)
+      -r, --reuse-targets                  reuse all targets, even if they're already completed
       -f...                                how much to frontload, none by default (pass -f for 1 level of frontloading, -ff for 2, -fff for 3...)
       -s, --skip-open                      dont open the target after
       -c, --config <CONFIG>                the config with the target pools [default: ~/.psitool.yaml]
+      -C, --completed <COMPLETED>          the yaml config with a list of completed targets (used to cache what you RV'd already) [default: ~/.psitool_completed_targets.yaml]
       -p, --pools <POOLS>                  the named target pool to read from (included unless excluded via label)
       -i, --include-label <INCLUDE_LABEL>  the target pools to read from, including this label
       -x, --exclude-label <EXCLUDE_LABEL>  the target pools to read from, EXCLUDING this label
@@ -23,35 +30,56 @@ binary to generate a 100% blind remote-viewing target.
       -V, --version                        Print version
 
 Basically, if no options are passed, it will use every pool you defined in the config, with every JPEG/JPG/SVG/TARGET
-in each of their directories.
+in each of their directories. It will process whatever you have in `~/.psitool_completed_targets.yaml` and skip the
+pre-used targets, unless you pass `-r` or `--reuse-targets`
 
-The output will look like this when run from the command-line, and then you can press Enter to see the target:
+The output will look like this when run from the command-line, and then you can press Enter to see the target.
+
+(Use `--quiet` or `-q` to suppress info logs)
 
     $ psi-target-pool
-    [2025-09-27T09:48:43Z] INFO: including pool 'training' because no options passed (all pools)
-    [2025-09-27T09:48:43Z] INFO: including pool 'personal' because no options passed (all pools)
-    [2025-09-27T09:48:43Z] INFO: found 2 target pools to match
-    [2025-09-27T09:48:43Z] INFO: pool ~/Documents/rv_pools/train: 221 jpgs
-    [2025-09-27T09:48:43Z] INFO: pool ~/Documents/rv_pools/personal_pool: 0 jpgs
-    [2025-09-27T09:48:43Z] INFO: Total jpgs: 221
-    [2025-09-27T09:48:43Z] INFO: Chose rvuid R-2DTH-GZW5-W9FMX29F6HJ52Q8N9C
-    Target: R-2DTH-GZW5-W9FMX29F6HJ52Q8N9C
-    Press ENTER to see target.
-    Remote viewer, begin.
 
-Notice the RVUID provided, `R-2DTH-GZW5-W9FMX29F6HJ52Q8N9C`. This is generated via the uuid5 function, which is
-non-random and generated using the actual bytes of the jpeg. The same exact file (bit by bit) will generate the same
-"RVUID", or Remote Viewing Unique Identifier.
+    [2025-09-28T09:43:20Z] INFO: including pool 'personal' because no options passed (all pools)
+    [2025-09-28T09:43:20Z] INFO: including pool 'train' because no options passed (all pools)
+    [2025-09-28T09:43:20Z] INFO: found 2 target pools to match
+    [2025-09-28T09:43:20Z] INFO: pool ~/Documents/rv_pools/personal_pool: 2 targets
+    [2025-09-28T09:43:31Z] INFO: pool ~/Documents/rv_pools/train: 1423 targets
+    [2025-09-28T09:43:31Z] INFO: Total targets: 1425
+    [2025-09-28T09:43:52Z] INFO: Chose rvuid R-DB56-29KT-XS94S59E2HMFYZW9GC
+
+    Target: R-DB56-29KT-XS94S59E2HMFYZW9GC
+    Remote viewer, begin viewing.
+    Press ENTER when complete.
+
+    ... <pressed enter> ...
+
+    Path: ~/Documents/rv_pools/train/Sculptureum.jpg
+    YAML meta: ~/Documents/rv_pools/train/Sculptureum.jpg.yaml
+    Query: sculpture
+    Description: "Sculptureum"
+    Datetime: "31 December 2022"
+    License: CC BY-SA 4.0
+    Was it a hit ([y]es, [n]o, otherwise not saved/recorded)? y
+    Score out of 100 (0 to 100 or otherwise not saved/recorded)? 25
+    Any notes? Press enter to end (or blank to not save anything): i thought it was an arm being held up, but it was an elephant trunk
+
+    [2025-09-28T05:45:42Z] INFO: Succesfully wrote 1 completed targets to ~/.psitool_completed_targets.yaml
+
+**Note**: In the future, I will update it to cache parsed images, but for now, every single run it re-hashes every
+target you are selecting so this can take a bit longer than it needs to, since it's literally reading every target
+you are randomly selecting from.
+
+Notice the RVUID provided, `R-DB56-29KT-XS94S59E2HMFYZW9GC`. This is generated via the uuid5 function, which is
+non-random and generated using the actual bytes of the target file. The same exact file (bit by bit) will generate
+the same "RVUID", or Remote Viewing Unique Identifier.
 
 This is like a UUID, except it uses base-32 digits (all digits, most uppercase letters except I/L/O/U since they
 can be confused with 1/0), and it splits the 128-bits into 3 sections with a static `R-` prefix.
 
-Basically, as a remote viewer it should be enough to just write `R-2DTH-GZW5` as above, but that is just 40-bits. You
-can always save it to file, or I will write a utility in the future to find the image by RVUID (short and long).
+Basically, as a remote viewer it should be enough to just write `R-2DTH-GZW5` as above, but that is just 40-bits and
+ot the full RVUID. However, all completed targets are saved to the completed config file.
 
-Right now, it will wait until you press enter so you can practice, then see the target image. I will add some helpers
-to work with it to also output the description from the YAML files that are coupled with each downloaded JPEG from
-wikimedia.
+I will write a utility in the future to find the image by RVUID (via short or long).
 
 You can _always_ create your own jpg/jpeg/target files and throw them in a directory. This is made so you can maintain
 your own private target pools as well.
@@ -62,15 +90,20 @@ It also supports text files with the `.target` extension, so you can write out y
 
 For example:
 
-    $ psi-target-pool -i me -q
-    Target: R-THZP-Q1S2-3S9EKA24H6CK7DN9F4
+$ psi-target-pool -i me -q
+    Target: R-P14S-9E46-JXEE1030TDSB5Y6KJM
     Remote viewer, begin viewing.
     Press ENTER when complete.
 
-    Path: ~/Documents/rv_pools/personal_pool/bar.baz.target
-    Target Text:
-    San Francisco, the golden gate bridge.
+    ...<pressed enter>...
 
+    Path: ~/Documents/rv_pools/personal_pool/foo.bar.target
+    Target Text:
+    The Mona Lisa painting, where it is as of 9/2025.
+
+    Was it a hit ([y]es, [n]o, otherwise not saved/recorded)? y
+    Score out of 100 (0 to 100 or otherwise not saved/recorded)? 55
+    Any notes? Press enter to end (or blank to not save anything):
 
 In this case, it will use the bytes of the text file just as it would the JPG so you still get a normal RVUID that is
 specific to the _exact_ target text.
@@ -180,10 +213,12 @@ YAML files that are associated with each JPG (same path, but + ".yaml") include 
 wikimedia. You _should_ be able to use that, _I think_. Again, I'm not a lawyer, but this is my best effort to allow
 you to download free content and share it. I solely provide this downloader, none of the images.
 
-Future Features
----------------
+Roadmap
+-------
 
 I'm open to suggestions, so feel free to contact me at psitool #at# protonmail #dot# com
 
 The next obvious feature I'm planning is Associated Remote Viewing functionality.
 
+- ARV
+- new utility: `psi-find-rvuid $RVUID`

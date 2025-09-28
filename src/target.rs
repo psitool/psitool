@@ -1,12 +1,14 @@
 use anyhow::Context;
-use log::{debug, warn};
+use log::{debug, info, warn};
 use rand::prelude::IndexedRandom;
 use rand::rng;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::ffi::OsStr;
 use std::fmt;
 use std::fs;
+use std::fs::File;
+use std::io::{self, Write};
 use std::path::{Path, PathBuf};
 
 use crate::rvuid::Rvuid;
@@ -132,17 +134,18 @@ impl Target {
 }
 
 impl Target {
-    pub fn all_from_dir(dir: &Path) -> anyhow::Result<Vec<Target>> {
+    pub fn all_from_dir(dir: &Path, completed_rvuids: &[Rvuid]) -> anyhow::Result<Vec<Target>> {
         let targets: Vec<Target> = fs::read_dir(dir)?
             .filter_map(|entry| entry.ok().and_then(|e| Target::parse(&e.path()).ok()))
+            .filter(|t| !completed_rvuids.contains(&t.rvuid))
             .collect();
         Ok(targets)
     }
 
-    pub fn random_from_dir(dir: &Path) -> anyhow::Result<Self> {
-        let targets = Self::all_from_dir(dir)?;
+    pub fn random_from_dir(dir: &Path, completed_rvuids: &[Rvuid]) -> anyhow::Result<Self> {
+        let targets = Self::all_from_dir(dir, completed_rvuids)?;
         if targets.is_empty() {
-            anyhow::bail!("no JPG/JPEG or TARGET files found in {}", dir.display());
+            anyhow::bail!("no JPG/JPEG/SVG or TARGET files found in {}", dir.display());
         }
 
         let mut rng = rng();
@@ -169,5 +172,108 @@ impl Target {
                 )
             })
             .collect()
+    }
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct CompletedTarget {
+    pub rvuid: Rvuid,
+    pub path: String,
+    pub meta_path: Option<String>,
+    pub hit: Option<bool>,
+    pub score: Option<u32>,
+    pub notes: Option<String>,
+}
+
+impl CompletedTarget {
+    pub fn parse(path: &str) -> anyhow::Result<Vec<Self>> {
+        let expanded = shellexpand::tilde(path).into_owned();
+        let pbuf = PathBuf::from(&expanded);
+        if !pbuf.exists() {
+            let targs: Vec<Self> = Vec::new();
+            return Ok(targs);
+        }
+        let text = fs::read_to_string(pbuf)?;
+        let targs: Vec<Self> = serde_yaml::from_str(&text)?;
+        Ok(targs)
+    }
+    pub fn dump(completed_targets: &Vec<Self>, path: &str) -> anyhow::Result<()> {
+        let expanded = shellexpand::tilde(path).into_owned();
+        let pbuf = PathBuf::from(&expanded);
+        debug!(
+            "Writing {} completed targets to {} ...",
+            completed_targets.len(),
+            pbuf.display()
+        );
+        let yaml = serde_yaml::to_string(completed_targets)?;
+        let mut file = File::create(pbuf.clone())?;
+        file.write_all(yaml.as_bytes())?;
+        info!(
+            "Succesfully wrote {} completed targets to {}",
+            completed_targets.len(),
+            pbuf.display()
+        );
+        Ok(())
+    }
+    pub fn interactive_ask_results(&mut self) {
+        print!("Was it a hit ([y]es, [n]o, otherwise not saved/recorded)? ");
+        io::stdout().flush().unwrap();
+        let mut input = String::new();
+        io::stdin().read_line(&mut input).unwrap();
+        self.hit = match input.trim().to_lowercase().as_str() {
+            "y" | "yes" => Some(true),
+            "n" | "no" => Some(false),
+            _ => {
+                debug!("Not recording whether it's a hit or not.");
+                None
+            }
+        };
+
+        print!("Score out of 100 (0 to 100 or otherwise not saved/recorded)? ");
+        io::stdout().flush().unwrap();
+        input.clear();
+        io::stdin().read_line(&mut input).unwrap();
+        self.score = match input.trim().parse::<u32>() {
+            Ok(n) if (0..=100).contains(&n) => {
+                info!("Recording score of {}", n);
+                Some(n)
+            }
+            _ => {
+                debug!("Not recording score.");
+                None
+            }
+        };
+
+        print!("Any notes? Press enter to end (or blank to not save anything): ");
+        io::stdout().flush().unwrap();
+        input.clear();
+        io::stdin().read_line(&mut input).unwrap();
+        self.notes = match input.trim() {
+            "" => None,
+            s => Some(s.to_string()),
+        };
+    }
+}
+
+impl From<Target> for CompletedTarget {
+    fn from(target: Target) -> Self {
+        CompletedTarget {
+            rvuid: target.rvuid,
+            path: target.path.display().to_string(),
+            meta_path: target.meta_path.map(|p| p.display().to_string()),
+            hit: None,
+            score: None,
+            notes: None,
+        }
+    }
+}
+
+impl fmt::Display for CompletedTarget {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if let Some(hit) = self.hit {
+            write!(f, "CompletedTarget[{}, {}]", self.rvuid, hit)
+        } else {
+            write!(f, "CompletedTarget[{}]", self.rvuid)
+        }
     }
 }

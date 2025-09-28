@@ -6,6 +6,7 @@ use std::collections::HashMap;
 use std::fs;
 use std::path::PathBuf;
 
+use crate::rvuid::Rvuid;
 use crate::target::Target;
 
 #[derive(Debug, Deserialize)]
@@ -127,23 +128,26 @@ impl TargetPool {
         Ok(pbuf)
     }
 
-    pub fn random_target(&self) -> anyhow::Result<Target> {
+    pub fn random_target(&self, completed_rvuids: &[Rvuid]) -> anyhow::Result<Target> {
         let dir = self.dest_dir()?;
-        Target::random_from_dir(&dir)
+        Target::random_from_dir(&dir, completed_rvuids)
     }
 
-    pub fn total_targets(&self) -> anyhow::Result<usize> {
+    pub fn total_targets(&self, completed_rvuids: &[Rvuid]) -> anyhow::Result<usize> {
         let dir = self.dest_dir()?;
-        Ok(Target::all_from_dir(&dir)?.len())
+        Ok(Target::all_from_dir(&dir, completed_rvuids)?.len())
     }
 }
 
-pub fn random_pool<'a>(tpools: &'a [&TargetPool]) -> anyhow::Result<&'a TargetPool> {
+pub fn random_pool<'a>(
+    tpools: &'a [&TargetPool],
+    completed_rvuids: &[Rvuid],
+) -> anyhow::Result<&'a TargetPool> {
     let mut rng = rand::rng();
 
     let weights: Vec<usize> = tpools
         .iter()
-        .map(|tp| tp.total_targets().unwrap_or(0)) // handle errors gracefully
+        .map(|tp| tp.total_targets(completed_rvuids).unwrap_or(0)) // handle errors gracefully
         .collect();
 
     if weights.iter().all(|&w| w == 0) {

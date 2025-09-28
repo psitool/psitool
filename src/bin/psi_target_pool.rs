@@ -4,7 +4,8 @@ use std::io::{self, Write};
 
 use psitool::config::{Config, TargetPool, random_pool};
 use psitool::logger;
-use psitool::target::TargetType;
+use psitool::rvuid::Rvuid;
+use psitool::target::{CompletedTarget, TargetType};
 
 #[derive(Parser, Debug)]
 #[command(author, version, about)]
@@ -14,6 +15,13 @@ struct Args {
 
     #[arg(short, long, help = "quiet logging (warn+ logs)")]
     quiet: bool,
+
+    #[arg(
+        short,
+        long,
+        help = "reuse all targets, even if they're already completed"
+    )]
+    reuse_targets: bool,
 
     #[arg(short, action = ArgAction::Count, help = "how much to frontload, none by default (pass -f for 1 level of frontloading, -ff for 2, -fff for 3...)")]
     frontload: u8,
@@ -28,6 +36,14 @@ struct Args {
         help = "the config with the target pools"
     )]
     config: String,
+
+    #[arg(
+        short = 'C',
+        long,
+        default_value = "~/.psitool_completed_targets.yaml",
+        help = "the yaml config with a list of completed targets (used to cache what you RV'd already)"
+    )]
+    completed: String,
 
     #[arg(
         short,
@@ -55,6 +71,7 @@ fn main() -> anyhow::Result<()> {
     let args = Args::parse();
     logger::init(args.verbose, args.quiet);
     let cfg = Config::load(&args.config)?;
+    let mut completed_targets: Vec<CompletedTarget> = CompletedTarget::parse(&args.completed)?;
     let mut tpools: Vec<&TargetPool> = Vec::new();
     for pool in args.pools.clone() {
         if !cfg.has_pool(&pool) {
@@ -90,17 +107,22 @@ fn main() -> anyhow::Result<()> {
             tpools.push(tpool);
         }
     }
+    let completed_rvuids: Vec<Rvuid> = if args.reuse_targets {
+        Vec::new()
+    } else {
+        completed_targets.iter().map(|t| t.rvuid.clone()).collect()
+    };
     info!("found {} target pools to match", tpools.len());
     let mut total = 0usize;
     for tpool in tpools.clone() {
-        let tpool_total = tpool.total_targets()?;
+        let tpool_total = tpool.total_targets(&completed_rvuids)?;
         total += tpool_total;
         info!("pool {}: {} targets", tpool.path, tpool_total);
     }
     info!("Total targets: {}", total);
 
-    let tpool = random_pool(&tpools)?;
-    let target = tpool.random_target()?;
+    let tpool = random_pool(&tpools, &completed_rvuids)?;
+    let target = tpool.random_target(&completed_rvuids)?;
     info!("Chose rvuid {}", target.rvuid);
     println!("Target: {}", target.rvuid);
     if args.frontload > 0 {
@@ -137,5 +159,10 @@ fn main() -> anyhow::Result<()> {
             println!("{}: {}", key, val);
         }
     }
+    let mut completed_target = CompletedTarget::from(target);
+    completed_target.interactive_ask_results();
+    info!("Adding completed target {}", completed_target);
+    completed_targets.push(completed_target);
+    CompletedTarget::dump(&completed_targets, &args.completed)?;
     Ok(())
 }
