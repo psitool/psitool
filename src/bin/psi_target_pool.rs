@@ -170,7 +170,7 @@ fn main() -> anyhow::Result<()> {
     }
     let mut completed_target = CompletedTarget::from(target);
     completed_target.interactive_ask_results();
-    info!("Adding completed target {}", completed_target);
+    debug!("Adding completed target {}", completed_target);
     completed_targets.push(completed_target);
     CompletedTarget::dump(&completed_targets, &args.completed)?;
     CachedHash::dump(&cachemap, &args.cached_hashes)?;

@@ -146,11 +146,16 @@ impl Target {
                     if let Some(ch) = cachemap.get(&e.path()) {
                         Some(ch.clone())
                     } else {
-                        let ch = Target::parse(&e.path()).ok().map(CachedHash::from);
-                        // Parsed a new one, so save this back to the mutable cachemap.
-                        let ch_copy = ch.clone().unwrap();
-                        cachemap.insert(ch_copy.path.clone(), ch_copy);
-                        ch
+                        let target: Option<Target> = Target::parse(&e.path()).ok();
+                        if let Some(target) = target {
+                            // Parsed a new one, so save this back to the mutable cachemap.
+                            let ch: CachedHash = target.into();
+                            cachemap.insert(ch.path.clone(), ch.clone());
+                            Some(ch)
+                        } else {
+                            // Could be a YAML file for example, any non-target.
+                            None
+                        }
                     }
                 })
             })
@@ -229,7 +234,7 @@ impl CompletedTarget {
         let yaml = serde_yaml::to_string(completed_targets)?;
         let mut file = File::create(pbuf.clone())?;
         file.write_all(yaml.as_bytes())?;
-        info!(
+        debug!(
             "Succesfully wrote {} completed targets to {}",
             completed_targets.len(),
             pbuf.display()
