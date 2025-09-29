@@ -1,7 +1,8 @@
 use clap::{ArgAction, Parser};
-use log::{error, info, warn};
+use log::{debug, error, info, warn};
 use std::io::{self, Write};
 
+use psitool::cache::{CacheMap, CachedHash};
 use psitool::config::{Config, TargetPool, random_pool};
 use psitool::logger;
 use psitool::rvuid::Rvuid;
@@ -46,6 +47,13 @@ struct Args {
     completed: String,
 
     #[arg(
+        long,
+        default_value = "~/.psitool_cached_hashes.yaml",
+        help = "the yaml config with a list of cached hashes so it doesn't have to compute them every run"
+    )]
+    cached_hashes: String,
+
+    #[arg(
         short,
         long,
         help = "the named target pool to read from (included unless excluded via label)"
@@ -72,6 +80,7 @@ fn main() -> anyhow::Result<()> {
     logger::init(args.verbose, args.quiet);
     let cfg = Config::load(&args.config)?;
     let mut completed_targets: Vec<CompletedTarget> = CompletedTarget::parse(&args.completed)?;
+    let mut cachemap: CacheMap = CachedHash::parse(&args.cached_hashes)?;
     let mut tpools: Vec<&TargetPool> = Vec::new();
     for pool in args.pools.clone() {
         if !cfg.has_pool(&pool) {
@@ -84,23 +93,23 @@ fn main() -> anyhow::Result<()> {
         if let Some(ref exclude) = args.exclude_label
             && tpool.labels.contains(exclude)
         {
-            info!(
+            debug!(
                 "excluding '{}' pool due to exclude label '{}'",
                 pool, exclude
             );
         } else if args.pools.contains(&pool) {
-            info!("including pool '{}' by name", pool);
+            debug!("including pool '{}' by name", pool);
             tpools.push(tpool);
         } else if let Some(ref include) = args.include_label
             && tpool.labels.contains(include)
         {
-            info!("including pool '{}' by label {}", pool, include);
+            debug!("including pool '{}' by label {}", pool, include);
             tpools.push(tpool);
         } else if args.pools.is_empty()
             && args.include_label.is_none()
             && args.exclude_label.is_none()
         {
-            info!(
+            debug!(
                 "including pool '{}' because no options passed (all pools)",
                 pool
             );
@@ -112,18 +121,18 @@ fn main() -> anyhow::Result<()> {
     } else {
         completed_targets.iter().map(|t| t.rvuid.clone()).collect()
     };
-    info!("found {} target pools to match", tpools.len());
+    debug!("found {} target pools to pull target from", tpools.len());
     let mut total = 0usize;
     for tpool in tpools.clone() {
-        let tpool_total = tpool.total_targets(&completed_rvuids)?;
+        let tpool_total = tpool.total_targets(&completed_rvuids, &mut cachemap)?;
         total += tpool_total;
-        info!("pool {}: {} targets", tpool.path, tpool_total);
+        debug!("pool {}: {} targets", tpool.path, tpool_total);
     }
-    info!("Total targets: {}", total);
+    info!("Selecting from {} pools, {} targets.", tpools.len(), total);
 
-    let tpool = random_pool(&tpools, &completed_rvuids)?;
-    let target = tpool.random_target(&completed_rvuids)?;
-    info!("Chose rvuid {}", target.rvuid);
+    let tpool = random_pool(&tpools, &completed_rvuids, &mut cachemap)?;
+    let target = tpool.random_target(&completed_rvuids, &mut cachemap)?;
+    debug!("Chose rvuid {}", target.rvuid);
     println!("Target: {}", target.rvuid);
     if args.frontload > 0 {
         let range_end: usize = target.frontloading.len().min(args.frontload as usize);
@@ -164,5 +173,6 @@ fn main() -> anyhow::Result<()> {
     info!("Adding completed target {}", completed_target);
     completed_targets.push(completed_target);
     CompletedTarget::dump(&completed_targets, &args.completed)?;
+    CachedHash::dump(&cachemap, &args.cached_hashes)?;
     Ok(())
 }
