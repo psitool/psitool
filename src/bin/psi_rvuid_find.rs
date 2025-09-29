@@ -41,15 +41,15 @@ fn main() -> anyhow::Result<()> {
     logger::init(args.verbose, args.quiet);
     let cfg = Config::load(&args.config)?;
     let mut found: HashSet<Rvuid> = HashSet::new();
-    let mut missing: HashSet<Rvuid> = args.rvuids.clone().into_iter().collect();
-    let orig: HashSet<Rvuid> = args.rvuids.into_iter().collect();
+    let mut missing: Vec<Rvuid> = args.rvuids.clone().into_iter().collect();
+    let orig: Vec<Rvuid> = args.rvuids.into_iter().collect();
     for pool in cfg.list_pools() {
         let tpool = cfg.get_pool(&pool).unwrap();
         for target in tpool.all_targets()? {
             if orig.contains(&target.rvuid) {
                 println!("{} found at: {}", target.rvuid, target.path.display());
                 found.insert(target.rvuid.clone());
-                missing.remove(&target.rvuid);
+                missing.retain(|rv| *rv != target.rvuid);
                 if missing.is_empty() && !args.find_dupes {
                     return Ok(());
                 }
