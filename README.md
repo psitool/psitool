@@ -13,6 +13,9 @@ Comment them out if you want to reuse those targets, or pass `--reuse-targets` a
 
     The 100% free and open-source Remote Viewing toolset.
 
+$ psi-target-pool -h
+The 100% free and open-source Remote Viewing toolset.
+
     Usage: psi-target-pool [OPTIONS]
 
     Options:
@@ -23,6 +26,7 @@ Comment them out if you want to reuse those targets, or pass `--reuse-targets` a
       -s, --skip-open                      dont open the target after
       -c, --config <CONFIG>                the config with the target pools [default: ~/.psitool.yaml]
       -C, --completed <COMPLETED>          the yaml config with a list of completed targets (used to cache what you RV'd already) [default: ~/.psitool_completed_targets.yaml]
+          --cached-hashes <CACHED_HASHES>  the yaml config with a list of cached hashes so it doesn't have to compute them every run [default: ~/.psitool_cached_hashes.yaml]
       -p, --pools <POOLS>                  the named target pool to read from (included unless excluded via label)
       -i, --include-label <INCLUDE_LABEL>  the target pools to read from, including this label
       -x, --exclude-label <EXCLUDE_LABEL>  the target pools to read from, EXCLUDING this label
@@ -38,36 +42,28 @@ The output will look like this when run from the command-line, and then you can 
 (Use `--quiet` or `-q` to suppress info logs)
 
     $ psi-target-pool
+    [2025-09-29T03:21:55Z] INFO: Selecting from 2 pools, 1418 targets.
 
-    [2025-09-28T09:43:20Z] INFO: including pool 'personal' because no options passed (all pools)
-    [2025-09-28T09:43:20Z] INFO: including pool 'train' because no options passed (all pools)
-    [2025-09-28T09:43:20Z] INFO: found 2 target pools to match
-    [2025-09-28T09:43:20Z] INFO: pool ~/Documents/rv_pools/personal_pool: 2 targets
-    [2025-09-28T09:43:31Z] INFO: pool ~/Documents/rv_pools/train: 1423 targets
-    [2025-09-28T09:43:31Z] INFO: Total targets: 1425
-    [2025-09-28T09:43:52Z] INFO: Chose rvuid R-DB56-29KT-XS94S59E2HMFYZW9GC
-
-    Target: R-DB56-29KT-XS94S59E2HMFYZW9GC
+    Target: R-WR1J-84HF-Q5EVQ3PVR17C8PXS7C
     Remote viewer, begin viewing.
     Press ENTER when complete.
 
     ... <pressed enter> ...
 
-    Path: ~/Documents/rv_pools/train/Sculptureum.jpg
-    YAML meta: ~/Documents/rv_pools/train/Sculptureum.jpg.yaml
+    Path: ~/Documents/rv_pools/train/Kampen,_Sculpture_De_Kamper_koe._10-01-2022._(actm.).jpg
+    YAML meta: ~/Documents/rv_pools/train/Kampen,_Sculpture_De_Kamper_koe._10-01-2022._(actm.).jpg.yaml
     Query: sculpture
-    Description: "Sculptureum"
-    Datetime: "31 December 2022"
+    Description: "Kampen, Sculpture \" De Kamper koe\" Artwork by Jits Bakker."
+    Datetime: "2022-01-10 12:29:43"
     License: CC BY-SA 4.0
     Was it a hit ([y]es, [n]o, otherwise not saved/recorded)? y
     Score out of 100 (0 to 100 or otherwise not saved/recorded)? 25
-    Any notes? Press enter to end (or blank to not save anything): i thought it was an arm being held up, but it was an elephant trunk
+    Any notes? Press enter to end (or blank to not save anything): saw a horse but thought it was real
 
     [2025-09-28T05:45:42Z] INFO: Succesfully wrote 1 completed targets to ~/.psitool_completed_targets.yaml
 
-**Note**: In the future, I will update it to cache parsed images, but for now, every single run it re-hashes every
-target you are selecting so this can take a bit longer than it needs to, since it's literally reading every target
-you are randomly selecting from.
+**Note**: I added caching, but it still needs to run at least once on each file and save the cache. But after
+downloading a bunch of test images then running it once, it will be way faster the next run.
 
 Notice the RVUID provided, `R-DB56-29KT-XS94S59E2HMFYZW9GC`. This is generated via the uuid5 function, which is
 non-random and generated using the actual bytes of the target file. The same exact file (bit by bit) will generate
@@ -77,9 +73,11 @@ This is like a UUID, except it uses base-32 digits (all digits, most uppercase l
 can be confused with 1/0), and it splits the 128-bits into 3 sections with a static `R-` prefix.
 
 Basically, as a remote viewer it should be enough to just write `R-2DTH-GZW5` as above, but that is just 40-bits and
-ot the full RVUID. However, all completed targets are saved to the completed config file.
+ot the full RVUID. However, all completed targets are saved to the completed config file, and it can find the
+associated full RVUID if you just provide the short version, like so:
 
-I will write a utility in the future to find the image by RVUID (via short or long).
+    $ psi-rvuid-find R-WR1J-84HF
+    R-WR1J-84HF-Q5EVQ3PVR17C8PXS7C found at: ~/Documents/rv_pools/train/Kampen,_Sculpture_De_Kamper_koe._10-01-2022._(actm.).jpg
 
 You can _always_ create your own jpg/jpeg/target files and throw them in a directory. This is made so you can maintain
 your own private target pools as well.
@@ -88,9 +86,9 @@ It also supports text files with the `.target` extension, so you can write out y
 
     echo "The workers burying the body of Alexander the Great, where and when he was buried." > ~/Documents/pool_dir/atg.target
 
-For example:
+For example (I am using the `--include-label me` as `-i me` because that selects the one pool I labeled with `me`):
 
-$ psi-target-pool -i me -q
+    $ psi-target-pool -i me -q
     Target: R-P14S-9E46-JXEE1030TDSB5Y6KJM
     Remote viewer, begin viewing.
     Press ENTER when complete.
@@ -245,7 +243,8 @@ Example:
 psi-rvuid-find
 --------------
 
-This utility will look for provided RVUIDs (but they must be the full 128-bit RVUID, not the short version).
+This utility will look for provided RVUIDs.
+They can be the full version like `R-3BVX-6WZ6-TSB070P33PHWWJ0A2W` or even just the short version, `R-3BVX-6WZ6`
 
     Usage: psi-rvuid-find [OPTIONS] [RVUIDS]...
 
@@ -253,12 +252,13 @@ This utility will look for provided RVUIDs (but they must be the full 128-bit RV
       [RVUIDS]...  the RVUIDs to look for
 
     Options:
-      -v, --verbose          verbose logging (debug logs)
-      -q, --quiet            quiet logging (warn+ logs)
-      -D, --find-dupes       keep searching even if you already found every RVUID (find potential dupes)
-      -c, --config <CONFIG>  the config with the target pools (this is where it will look for the RVUID) [default: ~/.psitool.yaml]
-      -h, --help             Print help
-      -V, --version          Print version
+      -v, --verbose                        verbose logging (debug logs)
+      -q, --quiet                          quiet logging (warn+ logs)
+      -D, --find-dupes                     keep searching even if you already found every RVUID (find potential dupes)
+      -c, --config <CONFIG>                the config with the target pools (this is where it will look for the RVUID) [default: ~/.psitool.yaml]
+          --cached-hashes <CACHED_HASHES>  the yaml config with a list of cached hashes so it doesn't have to compute them every run [default: ~/.psitool_cached_hashes.yaml]
+      -h, --help                           Print help
+      -V, --version                        Print version
 
 Example:
 
@@ -267,7 +267,7 @@ Example:
     R-BRHR-XGP6-E5BENEWQXDBEXBKN4W found at: ~/Documents/rv_pools/train/2014_Prowincja_Sjunik,_Klasztor_Tatew_(19).jpg
     R-ZANQ-CJK4-JD969E5TFGATJCX3VW found at: ~/Documents/rv_pools/train/2013-Aerial-Mount_of_Olives.jpg
 
-Now works with shortened 40-bit formats (like R-GWVD-CYBT , so you don't have to write everything down):
+Now works with shortened 40-bit formats (like `R-GWVD-CYBT`), so you don't have to write everything down):
 
     $ psi-rvuid-find R-GWVD-CYBT R-HN40-R5YJ-PNF8V2M9Y37FKPPEW4
     R-GWVD-CYBT-2D9DS3D0FP0A93QH54 found at: ~/Documents/rv_pools/personal_pool/test2.target

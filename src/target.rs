@@ -11,6 +11,7 @@ use std::fs::File;
 use std::io::{self, Write};
 use std::path::{Path, PathBuf};
 
+use crate::cache::{CacheMap, CachedHash};
 use crate::rvuid::Rvuid;
 
 #[derive(Clone, Debug, serde::Serialize, Deserialize)]
@@ -86,9 +87,9 @@ impl fmt::Display for Target {
 
 impl Target {
     pub fn parse(path: &Path) -> anyhow::Result<Self> {
-        let img_bytes = fs::read(path)
+        let target_bytes = fs::read(path)
             .with_context(|| format!("failed to read bytes from {}", path.display()))?;
-        let rvuid = Rvuid::from_bytes(&img_bytes);
+        let rvuid = Rvuid::from_bytes(&target_bytes);
         let maybe_meta_path = Self::maybe_yaml(path);
         let meta_path = maybe_meta_path.clone();
         let target_type = TargetType::parse(path)
@@ -134,27 +135,52 @@ impl Target {
 }
 
 impl Target {
-    pub fn all_from_dir(dir: &Path, completed_rvuids: &[Rvuid]) -> anyhow::Result<Vec<Target>> {
-        let targets: Vec<Target> = fs::read_dir(dir)?
-            .filter_map(|entry| entry.ok().and_then(|e| Target::parse(&e.path()).ok()))
-            .filter(|t| !completed_rvuids.contains(&t.rvuid))
+    pub fn all_from_dir(
+        dir: &Path,
+        completed_rvuids: &[Rvuid],
+        cachemap: &mut CacheMap,
+    ) -> anyhow::Result<Vec<CachedHash>> {
+        let cached_hashes: Vec<CachedHash> = fs::read_dir(dir)?
+            .filter_map(|entry| {
+                entry.ok().and_then(|e| {
+                    if let Some(ch) = cachemap.get(&e.path()) {
+                        Some(ch.clone())
+                    } else {
+                        let target: Option<Target> = Target::parse(&e.path()).ok();
+                        if let Some(target) = target {
+                            // Parsed a new one, so save this back to the mutable cachemap.
+                            let ch: CachedHash = target.into();
+                            cachemap.insert(ch.path.clone(), ch.clone());
+                            Some(ch)
+                        } else {
+                            // Could be a YAML file for example, any non-target.
+                            None
+                        }
+                    }
+                })
+            })
+            .filter(|ch| !completed_rvuids.contains(&ch.rvuid))
             .collect();
-        Ok(targets)
+        Ok(cached_hashes)
     }
 
-    pub fn random_from_dir(dir: &Path, completed_rvuids: &[Rvuid]) -> anyhow::Result<Self> {
-        let targets = Self::all_from_dir(dir, completed_rvuids)?;
-        if targets.is_empty() {
+    pub fn random_from_dir(
+        dir: &Path,
+        completed_rvuids: &[Rvuid],
+        cachemap: &mut CacheMap,
+    ) -> anyhow::Result<Self> {
+        let cached_hashes = Self::all_from_dir(dir, completed_rvuids, cachemap)?;
+        if cached_hashes.is_empty() {
             anyhow::bail!("no JPG/JPEG/SVG or TARGET files found in {}", dir.display());
         }
 
         let mut rng = rng();
-        let chosen = targets
+        let chosen = cached_hashes
             .choose(&mut rng)
             .cloned()
             .expect("should have chosen a target");
 
-        Ok(chosen)
+        chosen.try_into()
     }
 
     pub fn iter_meta(&self) -> Vec<(String, String)> {
@@ -208,7 +234,7 @@ impl CompletedTarget {
         let yaml = serde_yaml::to_string(completed_targets)?;
         let mut file = File::create(pbuf.clone())?;
         file.write_all(yaml.as_bytes())?;
-        info!(
+        debug!(
             "Succesfully wrote {} completed targets to {}",
             completed_targets.len(),
             pbuf.display()

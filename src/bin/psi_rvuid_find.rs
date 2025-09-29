@@ -1,6 +1,7 @@
 use clap::Parser;
 use std::collections::HashSet;
 
+use psitool::cache::{CacheMap, CachedHash};
 use psitool::config::Config;
 use psitool::logger;
 use psitool::rvuid::Rvuid;
@@ -29,6 +30,13 @@ struct Args {
     )]
     config: String,
 
+    #[arg(
+        long,
+        default_value = "~/.psitool_cached_hashes.yaml",
+        help = "the yaml config with a list of cached hashes so it doesn't have to compute them every run"
+    )]
+    cached_hashes: String,
+
     #[arg(help = "the RVUIDs to look for")]
     rvuids: Vec<Rvuid>,
 }
@@ -40,12 +48,13 @@ fn main() -> anyhow::Result<()> {
     }
     logger::init(args.verbose, args.quiet);
     let cfg = Config::load(&args.config)?;
+    let mut cachemap: CacheMap = CachedHash::parse(&args.cached_hashes)?;
     let mut found: HashSet<Rvuid> = HashSet::new();
     let mut missing: Vec<Rvuid> = args.rvuids.clone().into_iter().collect();
     let orig: Vec<Rvuid> = args.rvuids.into_iter().collect();
     for pool in cfg.list_pools() {
         let tpool = cfg.get_pool(&pool).unwrap();
-        for target in tpool.all_targets()? {
+        for target in tpool.all_targets(&mut cachemap)? {
             if orig.contains(&target.rvuid) {
                 println!("{} found at: {}", target.rvuid, target.path.display());
                 found.insert(target.rvuid.clone());

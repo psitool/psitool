@@ -1,6 +1,6 @@
 [package]
 name = "psitool"
-version = "0.5.0"
+version = "0.6.0"
 edition = "2024"
 authors = ["psitool <psitool@protonmail.com>"]
 description = "The 100% free and open-source Remote Viewing toolset."

@@ -205,4 +205,27 @@ id: "R-2DTH-GZW5-W9FMX29F6HJ52Q8N9C"
         let foo: Foo = serde_yaml::from_str(yaml).expect("failed to deserialize");
         assert_eq!(foo.id.to_string(), "R-2DTH-GZW5-W9FMX29F6HJ52Q8N9C");
     }
+
+    #[test]
+    fn test_rvuid_partial_eq() {
+        let r1 = Rvuid::from_str("R-2DTH-GZW5-W9FMX29F6HJ52Q8N9C").unwrap();
+        let r2 = Rvuid::from_str("R-2DTH-GZW5-W9FMX29F6HJ52Q8N9C").unwrap();
+        let r3 = Rvuid::from_str("R-2DTH-GZW5").unwrap();
+        let r_close_but_not = Rvuid::from_str("R-2DTH-GZW0").unwrap();
+        let r5 = Rvuid::from_str("R-2DTH-GZW5-123400000000000000").unwrap();
+        let r6 = Rvuid::from_str("R-2DTH-GZW5-567800000000000000").unwrap();
+        // These are equal.
+        assert_eq!(r1, r2);
+        assert_eq!(r1, r3);
+        assert_eq!(r2, r3);
+        assert_eq!(r3, r5);
+        assert_eq!(r3, r6);
+        // These are NOT equal.
+        assert_ne!(r1, r_close_but_not);
+        assert_ne!(r2, r_close_but_not);
+        assert_ne!(r3, r_close_but_not);
+        assert_ne!(r1, r5);
+        assert_ne!(r2, r5);
+        assert_ne!(r5, r6);
+    }
 }

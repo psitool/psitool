@@ -6,6 +6,7 @@ use std::collections::HashMap;
 use std::fs;
 use std::path::PathBuf;
 
+use crate::cache::{CacheMap, CachedHash};
 use crate::rvuid::Rvuid;
 use crate::target::Target;
 
@@ -128,32 +129,41 @@ impl TargetPool {
         Ok(pbuf)
     }
 
-    pub fn random_target(&self, completed_rvuids: &[Rvuid]) -> anyhow::Result<Target> {
+    pub fn random_target(
+        &self,
+        completed_rvuids: &[Rvuid],
+        cachemap: &mut CacheMap,
+    ) -> anyhow::Result<Target> {
         let dir = self.dest_dir()?;
-        Target::random_from_dir(&dir, completed_rvuids)
+        Target::random_from_dir(&dir, completed_rvuids, cachemap)
     }
 
-    pub fn total_targets(&self, completed_rvuids: &[Rvuid]) -> anyhow::Result<usize> {
+    pub fn total_targets(
+        &self,
+        completed_rvuids: &[Rvuid],
+        cachemap: &mut CacheMap,
+    ) -> anyhow::Result<usize> {
         let dir = self.dest_dir()?;
-        Ok(Target::all_from_dir(&dir, completed_rvuids)?.len())
+        Ok(Target::all_from_dir(&dir, completed_rvuids, cachemap)?.len())
     }
 
-    pub fn all_targets(&self) -> anyhow::Result<Vec<Target>> {
+    pub fn all_targets(&self, cachemap: &mut CacheMap) -> anyhow::Result<Vec<CachedHash>> {
         let no_rvuids: Vec<Rvuid> = Vec::new();
         let dir = self.dest_dir()?;
-        Target::all_from_dir(&dir, &no_rvuids)
+        Target::all_from_dir(&dir, &no_rvuids, cachemap)
     }
 }
 
 pub fn random_pool<'a>(
     tpools: &'a [&TargetPool],
     completed_rvuids: &[Rvuid],
+    cachemap: &mut CacheMap,
 ) -> anyhow::Result<&'a TargetPool> {
     let mut rng = rand::rng();
 
     let weights: Vec<usize> = tpools
         .iter()
-        .map(|tp| tp.total_targets(completed_rvuids).unwrap_or(0)) // handle errors gracefully
+        .map(|tp| tp.total_targets(completed_rvuids, cachemap).unwrap_or(0)) // handle errors gracefully
         .collect();
 
     if weights.iter().all(|&w| w == 0) {
