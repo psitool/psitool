@@ -264,8 +264,32 @@ Example:
 
     $ psi-rvuid-find R-BRHR-XGP6-E5BENEWQXDBEXBKN4W R-ZANQ-CJK4-JD969E5TFGATJCX3VW
 
-    R-BRHR-XGP6-E5BENEWQXDBEXBKN4W found at: /home/me/Documents/rv_pools/train/2014_Prowincja_Sjunik,_Klasztor_Tatew_(19).jpg
-    R-ZANQ-CJK4-JD969E5TFGATJCX3VW found at: /home/me/Documents/rv_pools/train/2013-Aerial-Mount_of_Olives.jpg
+    R-BRHR-XGP6-E5BENEWQXDBEXBKN4W found at: ~/Documents/rv_pools/train/2014_Prowincja_Sjunik,_Klasztor_Tatew_(19).jpg
+    R-ZANQ-CJK4-JD969E5TFGATJCX3VW found at: ~/Documents/rv_pools/train/2013-Aerial-Mount_of_Olives.jpg
+
+Now works with shortened 40-bit formats (like R-GWVD-CYBT , so you don't have to write everything down):
+
+    $ psi-rvuid-find R-GWVD-CYBT R-HN40-R5YJ-PNF8V2M9Y37FKPPEW4
+    R-GWVD-CYBT-2D9DS3D0FP0A93QH54 found at: ~/Documents/rv_pools/personal_pool/test2.target
+    R-HN40-R5YJ-PNF8V2M9Y37FKPPEW4 found at: ~/Documents/rv_pools/personal_pool/test1.target
+
+    $ echo $?
+    0
+
+    $ psi-rvuid-find R-GWVD-CYBT R-HN40-R5YJ-PNF8V2M9Y37FKPPEW0
+    R-GWVD-CYBT-2D9DS3D0FP0A93QH54 found at: ~/Documents/rv_pools/personal_pool/test2.target
+    Error: missing: [Rvuid { uuid: 8d480c17-d2b5-5e8d-8a89-f0cef9dacee0, rvuid: "R-HN40-R5YJ-PNF8V2M9Y37FKPPEW0", missing_bits: false, prefix40: 606799140818 }]
+
+    $ echo $?
+    1
+
+    $ psi-rvuid-find R-GWVD-CYBT R-HN40-R5YJ
+    R-GWVD-CYBT-2D9DS3D0FP0A93QH54 found at: ~/Documents/rv_pools/personal_pool/test2.target
+    R-HN40-R5YJ-PNF8V2M9Y37FKPPEW4 found at: ~/Documents/rv_pools/personal_pool/test1.target
+
+    $ echo $?
+    0
+
 
 Roadmap
 -------
